@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+<html lang="hr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Sredi popis</title>
+<meta name="description" content="Ukloni duplikate i prazne retke, sortiraj po hrvatskoj abecedi, usporedi dva popisa. Besplatno, u pregledniku, bez slanja podataka.">
+<link rel="icon" href="zajednicko/logo.svg">
+<link rel="stylesheet" href="zajednicko/app-bonic.css">
+<style>
+  body:not(.usporedba) .samo-usp, body.usporedba .samo-sredi { display: none !important; }
+  .nacin { margin-bottom: 16px; }
+  textarea.popis { min-height: 320px; font-size: 14px; line-height: 1.5; font-family: ui-monospace, Consolas, monospace; }
+  .opcije { display: grid; gap: 12px; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); margin-bottom: 16px; }
+  .opcije .skupina { display: flex; flex-direction: column; gap: 8px; }
+  .opcije h3 { font-size: 13px; text-transform: uppercase; letter-spacing: .06em; color: var(--blijedo); }
+  .statistika { display: flex; flex-wrap: wrap; gap: 6px; margin: 10px 0; min-height: 24px; }
+  .glava { display: flex; justify-content: space-between; align-items: center; gap: 8px; margin-bottom: 8px; }
+  .glava h2 { margin: 0; }
+  .duplikati { margin-top: 12px; font-size: 13.5px; }
+  .duplikati summary { cursor: pointer; font-weight: 600; color: var(--akcent-jak); }
+  .duplikati ul { margin: 8px 0 0; padding-left: 18px; max-height: 180px; overflow: auto; }
+  .tri { display: grid; gap: 14px; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); margin-top: 16px; }
+</style>
+</head>
+<body data-alat="sredi-popis">
+<header class="ab-vrh"></header>
+
+<main class="ab-omot">
+  <section class="ab-uvod">
+    <span class="ab-ikona"><span data-ik="lista"></span></span>
+    <div>
+      <h1>Sredi popis</h1>
+      <p>Zalijepi popis imena, e-mail adresa, šifri ili bilo čega drugog — ukloni duplikate i prazne retke, sortiraj po hrvatskoj abecedi (č, ć, dž, đ, lj, nj na pravom mjestu) ili usporedi dva popisa.</p>
+    </div>
+  </section>
+
+  <div class="seg nacin" role="radiogroup" aria-label="Način">
+    <label><input type="radio" name="nacin" value="sredi" checked><span>Sredi jedan popis</span></label>
+    <label><input type="radio" name="nacin" value="usporedi"><span>Usporedi dva popisa</span></label>
+  </div>
+
+  <section class="kartica opcije-kartica">
+    <div class="opcije">
+      <div class="skupina">
+        <h3>Čišćenje</h3>
+        <label class="kvacica"><input type="checkbox" id="trim" checked><span>Makni razmake na početku i kraju</span></label>
+        <label class="kvacica"><input type="checkbox" id="prazni" checked><span>Makni prazne retke</span></label>
+        <label class="kvacica samo-sredi"><input type="checkbox" id="duplikati" checked><span>Makni duplikate</span></label>
+      </div>
+      <div class="skupina">
+        <h3>Usporedba</h3>
+        <label class="kvacica"><input type="checkbox" id="velikaMala" checked><span>Ne razlikuj velika i mala slova</span></label>
+        <label class="kvacica"><input type="checkbox" id="kvacice"><span>Ne razlikuj č/c, š/s, ž/z, đ/dj…</span></label>
+        <label class="kvacica"><input type="checkbox" id="razmaci"><span>Zanemari višestruke razmake</span></label>
+      </div>
+      <div class="skupina">
+        <h3>Poredak</h3>
+        <select id="sort">
+          <option value="">Zadrži izvorni redoslijed</option>
+          <option value="az" selected>A → Ž (hrvatska abeceda)</option>
+          <option value="za">Ž → A</option>
+          <option value="prirodno">Prirodno (2 prije 10)</option>
+          <option value="duljina">Po duljini</option>
+          <option value="obrni">Obrni redoslijed</option>
+          <option value="nasumicno">Nasumično</option>
+        </select>
+        <select id="slova">
+          <option value="">Slova bez promjene</option>
+          <option value="mala">sva mala</option>
+          <option value="velika">SVA VELIKA</option>
+          <option value="naslov">Svaka Riječ Velikim</option>
+          <option value="recenica">Prvo slovo veliko</option>
+        </select>
+      </div>
+      <div class="skupina samo-sredi">
+        <h3>Dodatno</h3>
+        <select id="razdvoji">
+          <option value="red">Jedna stavka po retku</option>
+          <option value="zarez">Stavke odvojene zarezom</option>
+          <option value="tz">Stavke odvojene točka-zarezom</option>
+          <option value="razmak">Stavke odvojene razmakom</option>
+        </select>
+        <select id="spoji">
+          <option value="red">Rezultat: jedna po retku</option>
+          <option value="zarez">Rezultat: odvojeno zarezom</option>
+          <option value="tz">Rezultat: odvojeno točka-zarezom</option>
+        </select>
+        <label class="kvacica"><input type="checkbox" id="numeriraj"><span>Numeriraj (1., 2., 3.)</span></label>
+      </div>
+    </div>
+  </section>
+
+  <div class="stupci samo-sredi" style="margin-top:16px">
+    <section class="kartica">
+      <div class="glava"><h2>Ulaz</h2><button type="button" class="gumb tekstualni" id="ucitaj"><span data-ik="upload"></span>Učitaj .txt / .csv</button></div>
+      <textarea class="popis" id="ulaz" placeholder="Zalijepi popis ovdje…&#10;Ivana&#10;ivana&#10;Željko&#10;Zoran&#10;Ćiril"></textarea>
+    </section>
+    <section class="kartica">
+      <div class="glava"><h2>Rezultat</h2>
+        <div class="gumbi"><button type="button" class="gumb" id="kopiraj"><span data-ik="kopiraj"></span>Kopiraj</button><button type="button" class="gumb" id="preuzmi"><span data-ik="preuzmi"></span>.txt</button><button type="button" class="gumb tekstualni" id="uUlaz" title="Premjesti rezultat u ulaz">⇠</button></div></div>
+      <textarea class="popis" id="izlaz" readonly></textarea>
+      <div class="statistika" id="statistika"></div>
+      <details class="duplikati" id="dupl" hidden><summary></summary><ul></ul></details>
+    </section>
+  </div>
+
+  <div class="samo-usp">
+    <div class="stupci" style="margin-top:16px">
+      <section class="kartica"><h2>Popis A</h2><textarea class="popis" id="a" placeholder="npr. svi članovi"></textarea></section>
+      <section class="kartica"><h2>Popis B</h2><textarea class="popis" id="b" placeholder="npr. oni koji su platili"></textarea></section>
+    </div>
+    <div class="tri" id="tri"></div>
+  </div>
+</main>
+
+<footer class="ab-dno"></footer>
+<script src="zajednicko/app-bonic.js"></script>
+<script>
+'use strict';
+const { $, $$, esc, ikona, kopiraj, spremi } = AB;
+const kol = new Intl.Collator('hr', { sensitivity: 'base' });
+const kolPrirodno = new Intl.Collator('hr', { numeric: true, sensitivity: 'base' });
+const RAZ = { red: /\r?\n/, zarez: /,|\r?\n/, tz: /;|\r?\n/, razmak: /\s+/ };
+const SPOJ = { red: '\n', zarez: ', ', tz: '; ' };
+
+function kljuc(s) {
+  let k = s;
+  if ($('#razmaci').checked) k = k.replace(/\s+/g, ' ');
+  if ($('#velikaMala').checked) k = k.toLocaleLowerCase('hr');
+  if ($('#kvacice').checked) k = k.replace(/[đĐ]/g, 'dj').normalize('NFD').replace(/\p{M}/gu, '');
+  return k.trim();
+}
+function slova(s) {
+  const v = $('#slova').value;
+  if (v === 'mala') return s.toLocaleLowerCase('hr');
+  if (v === 'velika') return s.toLocaleUpperCase('hr');
+  if (v === 'naslov') return s.toLocaleLowerCase('hr').replace(/(^|[\s\-('"„])(\p{L})/gu, (m, a, b) => a + b.toLocaleUpperCase('hr'));
+  if (v === 'recenica') { const t = s.toLocaleLowerCase('hr'); return t.charAt(0).toLocaleUpperCase('hr') + t.slice(1); }
+  return s;
+}
+function ocisti(tekst, razdvoji = 'red') {
+  let st = tekst.split(RAZ[razdvoji]);
+  if ($('#trim').checked) st = st.map(s => s.trim());
+  const praznih = st.filter(s => !s.trim()).length;
+  if ($('#prazni').checked) st = st.filter(s => s.trim());
+  return { st: st.map(slova), praznih };
+}
+function poredaj(st) {
+  const v = $('#sort').value, a = [...st];
+  if (v === 'az') a.sort(kol.compare);
+  if (v === 'za') a.sort((x, y) => kol.compare(y, x));
+  if (v === 'prirodno') a.sort(kolPrirodno.compare);
+  if (v === 'duljina') a.sort((x, y) => x.length - y.length || kol.compare(x, y));
+  if (v === 'obrni') a.reverse();
+  if (v === 'nasumicno') {
+    const r = new Uint32Array(a.length); crypto.getRandomValues(r);
+    for (let i = a.length - 1; i > 0; i--) { const j = r[i] % (i + 1); [a[i], a[j]] = [a[j], a[i]]; }
+  }
+  return a;
+}
+
+function sredi() {
+  const ulaz = $('#ulaz').value;
+  if (!ulaz.trim()) { $('#izlaz').value = ''; $('#statistika').innerHTML = ''; $('#dupl').hidden = true; return; }
+  const { st, praznih } = ocisti(ulaz, $('#razdvoji').value);
+  const brojac = new Map(), van = [];
+  for (const s of st) {
+    const k = kljuc(s);
+    const n = brojac.get(k);
+    if (n) { n.n++; if ($('#duplikati').checked) continue; }
+    else brojac.set(k, { n: 1, prikaz: s });
+    van.push(s);
+  }
+  let rez = poredaj(van);
+  if ($('#numeriraj').checked) rez = rez.map((s, i) => `${i + 1}. ${s}`);
+  $('#izlaz').value = rez.join(SPOJ[$('#spoji').value]);
+  const dupl = [...brojac.values()].filter(x => x.n > 1).sort((a, b) => b.n - a.n);
+  const uklonjeno = st.length - van.length;
+  $('#statistika').innerHTML = `<span class="pilula">ulaz: ${st.length + ($('#prazni').checked ? praznih : 0)}</span><span class="pilula ok">rezultat: ${rez.length}</span>`
+    + (uklonjeno ? `<span class="pilula greska">uklonjeno duplikata: ${uklonjeno}</span>` : '')
+    + (praznih && $('#prazni').checked ? `<span class="pilula">praznih redaka: ${praznih}</span>` : '');
+  $('#dupl').hidden = !dupl.length;
+  if (dupl.length) {
+    $('#dupl summary').textContent = `${dupl.length} ${AB.mn(dupl.length, 'stavka se ponavlja', 'stavke se ponavljaju', 'stavki se ponavlja')}`;
+    $('#dupl ul').innerHTML = dupl.slice(0, 300).map(d => `<li>${esc(d.prikaz)} — ${d.n}×</li>`).join('');
+  }
+}
+
+function usporedi() {
+  const A = ocisti($('#a').value).st, B = ocisti($('#b').value).st;
+  const kA = new Map(), kB = new Map();
+  A.forEach(s => kA.has(kljuc(s)) || kA.set(kljuc(s), s));
+  B.forEach(s => kB.has(kljuc(s)) || kB.set(kljuc(s), s));
+  const samoA = poredaj([...kA].filter(([k]) => !kB.has(k)).map(([, v]) => v));
+  const samoB = poredaj([...kB].filter(([k]) => !kA.has(k)).map(([, v]) => v));
+  const oba = poredaj([...kA].filter(([k]) => kB.has(k)).map(([, v]) => v));
+  const kartica = (id, naslov, opis, st) => `<section class="kartica"><div class="glava"><h2>${naslov} <span class="pilula">${st.length}</span></h2>
+    <button type="button" class="gumb tekstualni" data-kop="${id}">${ikona('kopiraj')}Kopiraj</button></div>
+    <p class="napomena" style="margin-bottom:8px">${opis}</p><textarea class="popis" id="${id}" readonly style="min-height:200px">${esc(st.join('\n'))}</textarea></section>`;
+  $('#tri').innerHTML = (A.length || B.length) ? kartica('samoA', 'Samo u A', 'Nalaze se u popisu A, ali ne i u B.', samoA)
+    + kartica('samoB', 'Samo u B', 'Nalaze se u popisu B, ali ne i u A.', samoB)
+    + kartica('uOba', 'U oba popisa', 'Zajedničke stavke.', oba) : '';
+}
+
+const osvjezi = () => document.body.classList.contains('usporedba') ? usporedi() : sredi();
+document.addEventListener('input', e => { if (e.target.closest('main') && e.target.id !== 'izlaz') osvjezi(); });
+$$('input[name="nacin"]').forEach(r => r.addEventListener('change', () => { document.body.classList.toggle('usporedba', r.value === 'usporedi' && r.checked); osvjezi(); }));
+$('#kopiraj').onclick = () => kopiraj($('#izlaz').value);
+$('#preuzmi').onclick = () => spremi(new Blob([$('#izlaz').value], { type: 'text/plain;charset=utf-8' }), 'popis.txt');
+$('#uUlaz').onclick = () => { $('#ulaz').value = $('#izlaz').value; sredi(); };
+$('#tri').addEventListener('click', e => { const b = e.target.closest('[data-kop]'); if (b) kopiraj($('#' + b.dataset.kop).value); });
+const dat = document.createElement('input');
+dat.type = 'file'; dat.accept = '.txt,.csv,text/plain';
+dat.onchange = async () => {
+  const f = dat.files[0]; if (!f) return;
+  const buf = new Uint8Array(await f.arrayBuffer());
+  let t; try { t = new TextDecoder('utf-8', { fatal: true }).decode(buf); } catch { t = new TextDecoder('windows-1250').decode(buf); }
+  $('#ulaz').value = t.replace(/^﻿/, ''); dat.value = ''; sredi();
+};
+$('#ucitaj').onclick = () => dat.click();
+</script>
+</body>
+</html>
